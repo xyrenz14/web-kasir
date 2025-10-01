@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="id">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Super Kasir</title>
+
+    <link rel="stylesheet" href="styles.css">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Playfair+Display:wght@700&display=swap"
+        rel="stylesheet">
+</head>
+
+<body>
+    <div id="loginModal" class="modal active">
+        <div class="modal-card">
+            <div class="brand-login">
+                <h2>Super Kasir</h2>
+                <p>Silakan masuk untuk melanjutkan</p>
+            </div>
+            <form id="loginForm">
+                <input id="username" placeholder="Username" required />
+                <input id="password" placeholder="Password" type="password" required />
+                <button type="submit">Masuk</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="app" class="app hidden">
+        <aside class="sidebar">
+            <div class="logo">SUPER<span>KASIR</span></div>
+            <nav>
+                <button class="nav-btn active" data-view="dashboard">Dashboard</button>
+                <button class="nav-btn" data-view="products">Produk</button>
+                <button class="nav-btn" data-view="stock-in">Stok Masuk</button>
+                <button class="nav-btn" data-view="stock-out">Stok Keluar</button>
+                <button class="nav-btn" data-view="transactions">Laporan</button>
+            </nav>
+            <div class="sidebar-footer">Login sebagai <strong>admin</strong></div>
+        </aside>
+
+        <main class="main">
+            <header class="topbar">
+                <div class="search">
+                    <form id="scanForm">
+                        <input id="scanInput" placeholder="Scan barcode / ketik kode lalu Enter" />
+                        <button type="submit">Tambah ke Kasir</button>
+                    </form>
+                </div>
+                <div class="top-actions">
+                    <div class="kpi">
+                        <div>Penjualan Hari Ini</div>
+                        <div id="todaySales">Rp 0</div>
+                    </div>
+                    <button id="openCart" class="cart-button">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="9" cy="21" r="1"></circle>
+                            <circle cx="20" cy="21" r="1"></circle>
+                            <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                        </svg>
+                        <span>Kasir (<strong id="cartCount">0</strong>)</span>
+                    </button>
+                </div>
+            </header>
+
+            <section id="view-area" class="view-area">
+                <div id="dashboard" class="view active">
+                    <div class="dashboard-header">
+                        <h2 id="greeting">Selamat Datang, Admin!</h2>
+                        <p>Berikut adalah ringkasan aktivitas toko Anda hari ini.</p>
+                    </div>
+
+                    <div class="kpi-grid">
+                        <div class="kpi-card">
+                            <div class="kpi-icon icon-products">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round">
+                                    <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+                                    <line x1="3" y1="6" x2="21" y2="6"></line>
+                                    <path d="M16 10a4 4 0 0 1-8 0"></path>
+                                </svg>
+                            </div>
+                            <div class="kpi-info">
+                                <span>Total Produk Unik</span>
+                                <strong id="totalProducts">0</strong>
+                            </div>
+                        </div>
+                        <div class="kpi-card">
+                            <div class="kpi-icon icon-stock">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round">
+                                    <path
+                                        d="M12.89 1.45l8 4A2 2 0 0 1 22 7.24v9.53a2 2 0 0 1-1.11 1.79l-8 4a2 2 0 0 1-1.79 0l-8-4a2 2 0 0 1-1.1-1.8V7.24a2 2 0 0 1 1.11-1.79l8-4a2 2 0 0 1 1.78 0z">
+                                    </path>
+                                    <polyline points="2.32 6.16 12 11 21.68 6.16"></polyline>
+                                    <line x1="12" y1="22.76" x2="12" y2="11"></line>
+                                </svg>
+                            </div>
+                            <div class="kpi-info">
+                                <span>Stok Semua Item</span>
+                                <strong id="totalStock">0</strong>
+                            </div>
+                        </div>
+                        <div class="kpi-card">
+                            <div class="kpi-icon icon-tx">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round">
+                                    <line x1="12" y1="1" x2="12" y2="23"></line>
+                                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                                </svg>
+                            </div>
+                            <div class="kpi-info">
+                                <span>Transaksi Hari Ini</span>
+                                <strong id="txCount">0</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="cards">
+                        <div class="card">
+                            <h3>Produk Terlaris Hari Ini</h3>
+                            <ol id="topProducts"></ol>
+                        </div>
+                        <div class="card">
+                            <h3>Stok Hampir Habis</h3>
+                            <ul id="reorderList"></ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="products" class="view">
+                    <div class="panel">
+                        <div class="panel-header">
+                            <h3>Daftar Produk</h3>
+                            <button id="showAddProduct">Tambah Produk Baru</button>
+                        </div>
+                        <table class="table" id="productTable">
+                            <thead>
+                                <tr>
+                                    <th>Kode</th>
+                                    <th>Nama</th>
+                                    <th>Harga</th>
+                                    <th>Stok</th>
+                                    <th>Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                    <div id="addProductCard" class="panel hidden">
+                        <h4>Tambah / Edit Produk</h4>
+                        <form id="productForm">
+                            <input id="p_code" placeholder="Barcode / Kode Produk" required />
+                            <input id="p_name" placeholder="Nama Produk" required />
+                            <input id="p_price" placeholder="Harga Jual" type="number" required />
+                            <input id="p_stock" placeholder="Stok Awal" type="number" required />
+                            <input id="p_is_edit" type="hidden" />
+                            <div class="form-actions">
+                                <button type="button" id="cancelAdd">Batal</button>
+                                <button type="submit">Simpan Produk</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <div id="stock-in" class="view">
+                    <div class="panel">
+                        <h3>Pencatatan Stok Masuk</h3>
+                        <form id="stockInForm">
+                            <input id="in_barcode" placeholder="Scan atau masukkan kode produk" required />
+                            <input id="in_qty" placeholder="Jumlah" type="number" min="1" required />
+                            <button type="submit">Tambah Stok</button>
+                        </form>
+                        <h4>Log Stok Masuk Terakhir:</h4>
+                        <ul id="inLog" class="log-list"></ul>
+                    </div>
+                </div>
+
+                <div id="stock-out" class="view">
+                    <div class="panel">
+                        <h3>Pencatatan Stok Keluar (Rusak/Hilang)</h3>
+                        <form id="stockOutForm">
+                            <input id="out_barcode" placeholder="Scan atau masukkan kode produk" required />
+                            <input id="out_qty" placeholder="Jumlah" type="number" min="1" required />
+                            <button type="submit">Kurangi Stok</button>
+                        </form>
+                        <h4>Log Stok Keluar Terakhir:</h4>
+                        <ul id="outLog" class="log-list"></ul>
+                    </div>
+                </div>
+
+                <div id="transactions" class="view">
+                    <div class="panel">
+                        <h3>Laporan Transaksi</h3>
+                        <div class="filters">
+                            <input id="fromDate" type="date" />
+                            <span>sampai</span>
+                            <input id="toDate" type="date" />
+                            <button id="filterTx">Filter</button>
+                            <button id="exportTx">Cetak Laporan</button>
+                        </div>
+                        <table class="table" id="txTable">
+                            <thead>
+                                <tr>
+                                    <th>ID Transaksi</th>
+                                    <th>Waktu</th>
+                                    <th>Items</th>
+                                    <th>Total</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <div id="cartDrawer" class="cart-drawer hidden">
+        <div class="cart-head">
+            <h3>Keranjang Kasir</h3>
+            <button id="closeCart" title="Tutup">×</button>
+        </div>
+        <div class="cart-body">
+            <table id="cartTable" class="table">
+                <thead>
+                    <tr>
+                        <th>Produk</th>
+                        <th>Qty</th>
+                        <th>Subtotal</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+        <div class="cart-foot">
+            <div class="total">Total: <strong id="cartTotal">Rp 0</strong></div>
+            <button id="payBtn" disabled>Bayar Sekarang</button>
+        </div>
+    </div>
+
+    <div id="receiptModal" class="modal hidden">
+        <div class="modal-card" id="receiptContent">
+            <h3>Struk Pembelian</h3>
+            <p style="text-align:center;"><strong>SUPER KASIR</strong><br>Jl. Teknik Komputer Jaringan</p>
+            <hr>
+            <p>ID Transaksi: <span id="receiptTxId"></span></p>
+            <p>Waktu: <span id="receiptDate"></span></p>
+            <hr>
+            <table class="table" id="receiptTable">
+                <thead>
+                    <tr>
+                        <th>Item</th>
+                        <th>Qty</th>
+                        <th>Total</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+            <hr>
+            <h4>Total: <strong id="receiptTotal"></strong></h4>
+            <p style="text-align:center; margin-top: 20px;">Terima kasih telah berbelanja!</p>
+            <div class="receipt-actions" style="margin-top: 20px; display: flex; gap: 10px; justify-content: center;">
+                <button id="printReceiptBtn" style="flex: 1;">Cetak Struk</button>
+                <button id="closeReceiptBtn" style="flex: 1;">Tutup</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>
