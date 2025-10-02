@@ -8,53 +8,15 @@
         cart: {}
     };
 
-    // Fungsi untuk menyimpan state ke localStorage
-    const saveState = () => {
-        localStorage.setItem('superkasir_db', JSON.stringify(db));
-    };
-
-    // Fungsi untuk memuat state dari localStorage
-    const loadState = () => {
-        const savedDb = localStorage.getItem('superkasir_db');
-        if (savedDb) {
-            db = JSON.parse(savedDb);
-        } else {
-            // Jika tidak ada data, isi dengan data demo
-            db = {
-                products: [{
-                    code: '8992761134037',
-                    name: 'Indomie Goreng',
-                    price: 3500,
-                    stock: 50
-                }, {
-                    code: '8999909012039',
-                    name: 'Teh Pucuk Harum 350ml',
-                    price: 4000,
-                    stock: 80
-                }, {
-                    code: '89686642003',
-                    name: 'Le Minerale 600ml',
-                    price: 3000,
-                    stock: 3
-                }],
-                transactions: [],
-                cart: {}
-            };
-            saveState();
-        }
-    };
-
-
     // === UTILITIES ===
     const qs = s => document.querySelector(s);
     const qa = s => document.querySelectorAll(s);
     const rupiah = n => 'Rp ' + n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
     const showToast = (message, type = 'info') => {
-        // Untuk masa depan, bisa diganti dengan library notifikasi yang lebih baik
         alert(message);
     }
 
-    // === RENDER FUNCTIONS ===
+    // === RENDER FUNCTIONS (Tidak ada perubahan di sini) ===
 
     // Render semua data ke UI
     const renderAll = () => {
@@ -89,7 +51,6 @@
 
     // Render data di dashboard
     const renderDashboard = () => {
-        // [BARU] Logika untuk Sapaan Dinamis
         const hour = new Date().getHours();
         let greetingText = 'Selamat Datang, Admin!';
         if (hour < 11) {
@@ -103,16 +64,14 @@
         }
         qs('#greeting').innerText = greetingText;
 
-
         const today = new Date().toISOString().slice(0, 10);
-        const todayTxs = db.transactions.filter(t => t.date.startsWith(today));
+        const todayTxs = db.transactions.filter(t => t.date && t.date.startsWith(today));
 
         qs('#totalProducts').innerText = db.products.length;
         qs('#totalStock').innerText = db.products.reduce((acc, p) => acc + p.stock, 0);
         qs('#txCount').innerText = todayTxs.length;
         qs('#todaySales').innerText = rupiah(todayTxs.reduce((acc, t) => acc + t.total, 0));
 
-        // Render produk terlaris
         const salesCount = {};
         todayTxs.forEach(tx => {
             for (const code in tx.items) {
@@ -121,7 +80,7 @@
         });
         const sortedProducts = Object.entries(salesCount)
             .sort(([, a], [, b]) => b - a)
-            .slice(0, 5); // Ambil 5 teratas
+            .slice(0, 5);
 
         const topProductsList = qs('#topProducts');
         topProductsList.innerHTML = '';
@@ -138,7 +97,6 @@
             });
         }
 
-        // Render info reorder
         const reorderItems = db.products.filter(p => p.stock <= REORDER_LEVEL);
         const reorderList = qs('#reorderList');
         reorderList.innerHTML = '';
@@ -192,7 +150,7 @@
             tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Belum ada transaksi.</td></tr>';
             return;
         }
-        txs.slice().reverse().forEach(t => { // Tampilkan dari yang terbaru
+        txs.slice().reverse().forEach(t => {
             const tr = document.createElement('tr');
             tr.innerHTML = `
         <td>${t.id}</td>
@@ -217,26 +175,48 @@
             const tr = document.createElement('tr');
             tr.innerHTML = `
             <td>${item.name}<br><small>${item.qty} x ${rupiah(item.price)}</small></td>
-            <td>${item.qty}</td>
             <td>${rupiah(item.price * item.qty)}</td>
-        `;
+        `; // Perbaikan kecil di struk agar lebih jelas
             tbody.appendChild(tr);
         }
 
         qs('#receiptModal').classList.remove('hidden');
     };
+    
+    // [FIREBASE] Fungsi baru untuk memuat data dari Firestore
+    const loadDataFromFirestore = async () => {
+        try {
+            // Muat produk
+            const productSnapshot = await firestoreDB.collection('products').get();
+            db.products = productSnapshot.docs.map(doc => ({ code: doc.id, ...doc.data() }));
+
+            // Muat transaksi
+            const txSnapshot = await firestoreDB.collection('transactions').get();
+            db.transactions = txSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+            console.log("Data berhasil dimuat dari Firestore!");
+        } catch (error) {
+            console.error("Error memuat data: ", error);
+            showToast('Gagal terhubung ke database. Cek konsol.', 'error');
+        }
+    };
+
 
     // === CORE LOGIC & EVENT HANDLERS ===
 
     // Inisialisasi Aplikasi
-    const init = () => {
-        loadState();
-        renderAll();
+    const init = async () => {
+        const loginModalContent = qs('#loginModal').innerHTML;
+        qs('#loginModal').innerHTML = '<div class="modal-card"><h2>Menghubungkan ke database...</h2></div>';
+
+        await loadDataFromFirestore();
+
+        qs('#loginModal').innerHTML = loginModalContent;
         setupEventListeners();
     };
 
+
     const setupEventListeners = () => {
-        // Login
         qs('#loginForm').addEventListener('submit', (e) => {
             e.preventDefault();
             const u = qs('#username').value.trim();
@@ -244,12 +224,12 @@
             if (u === 'admin' && p === 'admin') {
                 qs('#loginModal').classList.add('hidden');
                 qs('#app').classList.remove('hidden');
+                renderAll();
             } else {
                 showToast('Username atau password salah. Coba: admin / admin', 'error');
             }
         });
 
-        // Navigasi
         qa('.nav-btn').forEach(btn => btn.addEventListener('click', () => {
             qa('.nav-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
@@ -257,16 +237,16 @@
             qs('#' + btn.dataset.view).classList.add('active');
         }));
 
-        // Manajemen Produk
         qs('#showAddProduct').addEventListener('click', () => {
             qs('#productForm').reset();
             qs('#p_is_edit').value = '';
+            qs('#p_code').disabled = false;
             qs('#addProductCard h4').innerText = 'Tambah Produk';
             qs('#addProductCard').classList.remove('hidden');
         });
         qs('#cancelAdd').addEventListener('click', () => qs('#addProductCard').classList.add('hidden'));
 
-        qs('#productForm').addEventListener('submit', (e) => {
+        qs('#productForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const code = qs('#p_code').value.trim();
             const name = qs('#p_name').value.trim();
@@ -279,200 +259,184 @@
                 return;
             }
 
-            if (isEdit) {
-                const product = db.products.find(p => p.code === isEdit);
-                if (product) {
-                    product.name = name;
-                    product.price = price;
-                    product.stock = stock;
-                    showToast('Produk berhasil diperbarui.');
-                }
-            } else {
-                if (db.products.some(p => p.code === code)) {
-                    showToast('Produk dengan kode ini sudah ada.', 'error');
-                    return;
-                }
-                db.products.push({
-                    code,
-                    name,
-                    price,
-                    stock
-                });
-                showToast('Produk berhasil ditambahkan.');
-            }
+            const productData = { name, price, stock };
+            const button = e.target.querySelector('button[type=submit]');
+            button.disabled = true;
+            button.innerText = 'Menyimpan...';
 
-            saveState();
-            renderProducts();
-            renderDashboard();
-            qs('#addProductCard').classList.add('hidden');
-            e.target.reset();
+            try {
+                if (isEdit) {
+                    await firestoreDB.collection('products').doc(isEdit).update(productData);
+                    const product = db.products.find(p => p.code === isEdit);
+                    if (product) Object.assign(product, productData);
+                    showToast('Produk berhasil diperbarui.');
+                } else {
+                    const doc = await firestoreDB.collection('products').doc(code).get();
+                    if (doc.exists) {
+                        showToast('Produk dengan kode ini sudah ada.', 'error');
+                        return;
+                    }
+                    await firestoreDB.collection('products').doc(code).set(productData);
+                    db.products.push({ code, ...productData });
+                    showToast('Produk berhasil ditambahkan.');
+                }
+                renderProducts();
+                renderDashboard();
+                qs('#addProductCard').classList.add('hidden');
+                e.target.reset();
+            } catch (error) {
+                console.error("Error saving product: ", error);
+                showToast('Gagal menyimpan produk ke database.', 'error');
+            } finally {
+                button.disabled = false;
+                button.innerText = 'Simpan Produk';
+            }
         });
 
-        qs('#productTable').addEventListener('click', (e) => {
+        qs('#productTable').addEventListener('click', async (e) => {
             const code = e.target.dataset.code;
             if (e.target.classList.contains('edit')) {
                 const p = db.products.find(x => x.code === code);
                 if (p) {
                     qs('#addProductCard h4').innerText = 'Edit Produk';
                     qs('#p_code').value = p.code;
+                    qs('#p_code').disabled = true;
                     qs('#p_name').value = p.name;
                     qs('#p_price').value = p.price;
                     qs('#p_stock').value = p.stock;
-                    qs('#p_is_edit').value = p.code; // Tandai mode edit
+                    qs('#p_is_edit').value = p.code;
                     qs('#addProductCard').classList.remove('hidden');
                 }
             }
             if (e.target.classList.contains('del')) {
                 if (confirm('Apakah Anda yakin ingin menghapus produk ini?')) {
-                    db.products = db.products.filter(x => x.code !== code);
-                    saveState();
-                    renderAll();
-                    showToast('Produk berhasil dihapus.');
+                    try {
+                        await firestoreDB.collection('products').doc(code).delete();
+                        db.products = db.products.filter(x => x.code !== code);
+                        renderAll();
+                        showToast('Produk berhasil dihapus.');
+                    } catch (error) {
+                        console.error("Error deleting product: ", error);
+                        showToast('Gagal menghapus produk dari database.', 'error');
+                    }
                 }
             }
         });
-
-        // Manajemen Stok
-        qs('#stockInForm').addEventListener('submit', e => {
-            e.preventDefault();
-            const code = qs('#in_barcode').value.trim();
-            const qty = parseInt(qs('#in_qty').value) || 0;
+        
+        const handleStockUpdate = async (form, type) => {
+            const code = form.querySelector('input[type=text]').value.trim();
+            const qty = parseInt(form.querySelector('input[type=number]').value) || 0;
             const product = db.products.find(p => p.code === code);
-            if (!product) {
-                showToast('Produk tidak ditemukan.', 'error');
-                return;
+            if (!product) return showToast('Produk tidak ditemukan.', 'error');
+            if (qty <= 0) return showToast('Jumlah harus lebih dari 0.', 'error');
+            
+            let newStock;
+            if (type === 'IN') {
+                newStock = product.stock + qty;
+            } else {
+                if (product.stock < qty) return showToast('Stok tidak mencukupi.', 'error');
+                newStock = product.stock - qty;
             }
-            if (qty <= 0) {
-                showToast('Jumlah harus lebih dari 0.', 'error');
-                return;
-            }
-            product.stock += qty;
-            saveState();
-            renderAll();
-            qs('#inLog').innerHTML += `<li>[IN] ${new Date().toLocaleTimeString()} - ${product.name}: +${qty}</li>`;
-            e.target.reset();
-            qs('#in_barcode').focus();
-        });
 
-        qs('#stockOutForm').addEventListener('submit', e => {
-            e.preventDefault();
-            const code = qs('#out_barcode').value.trim();
-            const qty = parseInt(qs('#out_qty').value) || 0;
-            const product = db.products.find(p => p.code === code);
-            if (!product) {
-                showToast('Produk tidak ditemukan.', 'error');
-                return;
+            try {
+                await firestoreDB.collection('products').doc(code).update({ stock: newStock });
+                product.stock = newStock;
+                renderAll();
+                qs(`#${type.toLowerCase()}Log`).innerHTML += `<li>[${type}] ${new Date().toLocaleTimeString()} - ${product.name}: ${type === 'IN' ? '+' : '-'}${qty}</li>`;
+                form.reset();
+                form.querySelector('input[type=text]').focus();
+            } catch (error) {
+                console.error("Error updating stock: ", error);
+                showToast('Gagal update stok di database.', 'error');
             }
-            if (qty <= 0) {
-                showToast('Jumlah harus lebih dari 0.', 'error');
-                return;
-            }
-            if (product.stock < qty) {
-                showToast('Stok tidak mencukupi.', 'error');
-                return;
-            }
-            product.stock -= qty;
-            saveState();
-            renderAll();
-            qs('#outLog').innerHTML += `<li>[OUT] ${new Date().toLocaleTimeString()} - ${product.name}: -${qty}</li>`;
-            e.target.reset();
-            qs('#out_barcode').focus();
-        });
+        };
 
-        // Fungsionalitas Kasir & Keranjang
+        qs('#stockInForm').addEventListener('submit', e => { e.preventDefault(); handleStockUpdate(e.target, 'IN'); });
+        qs('#stockOutForm').addEventListener('submit', e => { e.preventDefault(); handleStockUpdate(e.target, 'OUT'); });
+
         qs('#scanForm').addEventListener('submit', e => {
             e.preventDefault();
             const code = qs('#scanInput').value.trim();
             if (!code) return;
-            addToCart(code);
-            qs('#scanInput').value = '';
-        });
-
-        const addToCart = (code) => {
             const product = db.products.find(p => p.code === code);
-            if (!product) {
-                showToast('Produk tidak ditemukan.', 'error');
-                return;
-            }
+            if (!product) return showToast('Produk tidak ditemukan.', 'error');
 
             const cartItem = db.cart[code];
-            if (product.stock <= (cartItem ? cartItem.qty : 0)) {
-                showToast('Stok produk tidak mencukupi.', 'error');
-                return;
-            }
+            if (product.stock <= (cartItem ? cartItem.qty : 0)) return showToast('Stok produk tidak mencukupi.', 'error');
 
             if (cartItem) {
                 cartItem.qty++;
             } else {
-                db.cart[code] = {
-                    code: product.code,
-                    name: product.name,
-                    price: product.price,
-                    qty: 1
-                };
+                db.cart[code] = { code: product.code, name: product.name, price: product.price, qty: 1 };
             }
-            saveState();
             renderCart();
-        }
+            qs('#scanInput').value = '';
+        });
 
         qs('#openCart').addEventListener('click', () => qs('#cartDrawer').classList.remove('hidden'));
         qs('#closeCart').addEventListener('click', () => qs('#cartDrawer').classList.add('hidden'));
 
         qs('#cartTable').addEventListener('click', e => {
             if (e.target.classList.contains('del-cart-item')) {
-                const code = e.target.dataset.code;
-                delete db.cart[code];
-                saveState();
+                delete db.cart[e.target.dataset.code];
                 renderCart();
             }
         });
 
-        // Proses Pembayaran
-        qs('#payBtn').addEventListener('click', () => {
-            if (Object.keys(db.cart).length === 0) return;
-            if (!confirm('Proses pembayaran? Stok akan dikurangi.')) return;
+        qs('#payBtn').addEventListener('click', async () => {
+            if (Object.keys(db.cart).length === 0 || !confirm('Proses pembayaran? Stok akan dikurangi.')) return;
 
             const total = Object.values(db.cart).reduce((acc, item) => acc + (item.price * item.qty), 0);
-
-            // Buat record transaksi
+            const transactionId = 'TX' + Date.now();
             const transaction = {
-                id: 'TX' + Date.now(),
                 date: new Date().toISOString(),
-                items: { ...db.cart
-                }, // Salin item keranjang agar tidak hilang
+                items: { ...db.cart },
                 total: total
             };
-            db.transactions.push(transaction);
+            
+            const button = qs('#payBtn');
+            button.disabled = true;
+            button.innerText = 'Memproses...';
 
-            // Kurangi stok produk
-            for (const code in db.cart) {
-                const product = db.products.find(p => p.code === code);
-                if (product) {
-                    product.stock -= db.cart[code].qty;
+            try {
+                const batch = firestoreDB.batch();
+                const txRef = firestoreDB.collection('transactions').doc(transactionId);
+                batch.set(txRef, transaction);
+
+                for (const code in db.cart) {
+                    const productRef = firestoreDB.collection('products').doc(code);
+                    const product = db.products.find(p => p.code === code);
+                    if (product) {
+                        const newStock = product.stock - db.cart[code].qty;
+                        batch.update(productRef, { stock: newStock });
+                    }
                 }
+                
+                await batch.commit();
+
+                db.transactions.push({ id: transactionId, ...transaction });
+                for (const code in db.cart) {
+                    const product = db.products.find(p => p.code === code);
+                    if (product) product.stock -= db.cart[code].qty;
+                }
+                db.cart = {};
+
+                renderAll();
+                qs('#cartDrawer').classList.add('hidden');
+                showReceipt({ id: transactionId, ...transaction });
+            } catch (error) {
+                console.error("Error processing payment: ", error);
+                showToast('GAGAL memproses pembayaran. Stok tidak berubah. Coba lagi.', 'error');
+            } finally {
+                 button.disabled = false;
+                 button.innerText = 'Bayar Sekarang';
             }
-
-            // Kosongkan keranjang
-            db.cart = {};
-
-            saveState();
-
-            // Render ulang UI di belakang layar
-            renderAll();
-            qs('#cartDrawer').classList.add('hidden');
-
-            // Tampilkan struk sebagai konfirmasi akhir
-            showReceipt(transaction);
         });
 
-        // Laporan
         qs('#filterTx').addEventListener('click', () => {
             const from = qs('#fromDate').value;
             const to = qs('#toDate').value;
-            if (!from || !to) {
-                renderTransactions(db.transactions);
-                return;
-            }
+            if (!from || !to) return renderTransactions(db.transactions);
             const filtered = db.transactions.filter(t => {
                 const txDate = t.date.slice(0, 10);
                 return txDate >= from && txDate <= to;
@@ -481,45 +445,27 @@
         });
 
         qs('#exportTx').addEventListener('click', () => {
-            // Fungsi print sederhana
             const printContent = qs('#txTable').outerHTML;
             const printWindow = window.open('', '', 'height=500,width=800');
             printWindow.document.write('<html><head><title>Laporan Transaksi</title>');
             printWindow.document.write('<style>body{font-family:sans-serif;} table{width:100%; border-collapse:collapse;} th,td{border:1px solid #ddd; padding:8px;}</style>');
-            printWindow.document.write('</head><body>');
-            printWindow.document.write('<h1>Laporan Transaksi</h1>');
+            printWindow.document.write('</head><body><h1>Laporan Transaksi</h1>');
             printWindow.document.write(printContent);
             printWindow.document.write('</body></html>');
             printWindow.document.close();
             printWindow.print();
         });
 
-        // Event listener untuk tombol di modal struk
         qs('#closeReceiptBtn').addEventListener('click', () => {
             qs('#receiptModal').classList.add('hidden');
-            showToast('Pembayaran berhasil!'); // Notifikasi ditampilkan setelah struk ditutup
+            showToast('Pembayaran berhasil!');
         });
 
         qs('#printReceiptBtn').addEventListener('click', () => {
             const receiptHtml = qs('#receiptContent').innerHTML;
             const printWindow = window.open('', '', 'height=600,width=400');
             printWindow.document.write('<html><head><title>Struk Pembelian</title>');
-            printWindow.document.write(`
-            <style>
-                body { 
-                    font-family: 'Courier New', Courier, monospace; 
-                    font-size: 14px;
-                    color: #000;
-                    width: 300px; /* Lebar kertas struk thermal */
-                }
-                .receipt-actions { display: none; } /* Sembunyikan tombol saat cetak */
-                h3, h4 { text-align: center; margin: 5px 0; }
-                p { margin: 2px 0; }
-                hr { border: none; border-top: 1px dashed #000; margin: 8px 0; }
-                table { width: 100%; border-collapse: collapse; }
-                td, th { padding: 2px; font-size: 13px; text-align: left; vertical-align: top;}
-            </style>
-        `);
+            printWindow.document.write(`<style>body{font-family:'Courier New',Courier,monospace;font-size:14px;color:#000;width:300px;}.receipt-actions{display:none;}h3,h4{text-align:center;margin:5px 0;}p{margin:2px 0;}hr{border:none;border-top:1px dashed #000;margin:8px 0;}table{width:100%;border-collapse:collapse;}td,th{padding:2px;font-size:13px;text-align:left;vertical-align:top;}</style>`);
             printWindow.document.write('</head><body>');
             printWindow.document.write(receiptHtml);
             printWindow.document.write('</body></html>');
@@ -528,7 +474,6 @@
             printWindow.print();
             printWindow.close();
         });
-
     };
 
     // Jalankan aplikasi saat DOM siap

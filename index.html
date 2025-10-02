@@ -275,6 +275,29 @@
             </div>
         </div>
     </div>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+    <script>
+        // Konfigurasi Firebase Anda (ini sudah benar)
+        const firebaseConfig = {
+            apiKey: "AIzaSyD5Q2Lor5n43vYbtUsmMQ46yy7EYO3IQJU",
+            authDomain: "web-kasir-supermarket.firebaseapp.com",
+            projectId: "web-kasir-supermarket",
+            storageBucket: "web-kasir-supermarket.firebasestorage.app",
+            messagingSenderId: "728936777589",
+            appId: "1:728936777589:web:b24e9ccdb640aec886f53c",
+            measurementId: "G-G240LH38VC"
+        };
+
+        // Menghubungkan aplikasi Anda ke Firebase
+        firebase.initializeApp(firebaseConfig);
+
+        // Membuat variabel untuk berinteraksi dengan Database Firestore
+        const firestoreDB = firebase.firestore();
+    </script>
+
+    ```
 
     <script src="app.js"></script>
 </body>
